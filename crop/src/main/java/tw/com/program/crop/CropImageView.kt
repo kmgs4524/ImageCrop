@@ -1,21 +1,25 @@
 package tw.com.program.crop
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.util.AttributeSet
 import android.util.Log
+import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.annotation.IntRange
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.view.drawToBitmap
 import kotlin.math.sqrt
 
 class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context, attrs) {
 
     private val imageView: ImageView = ImageView(context).apply {
-        layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
         setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.cat))
         val drawable = ContextCompat.getDrawable(getContext(), R.drawable.cat)
         Log.d(TAG, "drawable width: ${drawable!!.intrinsicWidth} height: ${drawable.intrinsicHeight}")
@@ -28,21 +32,22 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
 
     private val scaleListener = ScaleListener(currentImageMatrix, imageView)
     private val scaleGestureDetector = ScaleGestureDetector(context, scaleListener)
+    private val gestureListener = GestureListener(currentImageMatrix, imageView)
+    private val gestureDetector = GestureDetector(context, gestureListener)
 
-    private val currentScale = 0
     private var deltaScale = 1f
 
     private var drawableWidth = 0
     private var drawableHeight = 0
 
-    private var imageOriginLeft = 0
-    private var imageOriginTop = 0
-
     var radius = 0
         set(value) = initScaleImage(value)
 
+    var onImageReady: ((Bitmap) -> Unit)? = null
+    var onDeltaScaleChange: ((Float) -> Unit)? = null
+    var onMatrixChange: ((Matrix) -> Unit)? = null
+
     init {
-        // imageView.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.cat))
         addView(imageView)
     }
 
@@ -52,12 +57,7 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        // val imageOriginLeft = (measuredWidth / 2) - (imageView.drawable.intrinsicWidth / 2)
-        // val imageOriginTop = (measuredHeight / 2) - (imageView.drawable.intrinsicHeight / 2)
         imageView.layout(left, top, right, bottom)
-
-        // 圖片置中
-        // currentImageMatrix.setTranslate(imageOriginLeft.toFloat(), imageOriginTop.toFloat())
 
         // TODO: 2020/11/25 圖片放大到至少比裁切框大
         drawableWidth = imageView.drawable.intrinsicWidth
@@ -65,27 +65,30 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
         while (drawableWidth * deltaScale < radius * 2 || drawableHeight * deltaScale < radius * 2) {
             deltaScale += 0.2f
         }
-        // if (drawableWidth * deltaScale < radius * 2 || drawableHeight * deltaScale < radius * 2) {
-        //     deltaScale = deltaScale *
-        //     currentImageMatrix.postScale()
-        // }
 
         currentImageMatrix.postScale(deltaScale, deltaScale)
         imageView.imageMatrix = currentImageMatrix
         Log.d(TAG, "imageView width: ${imageView.measuredWidth} height: ${imageView.measuredHeight}")
         // Log.d(TAG, "CropImageView left: ${imageView.measuredWidth} height: ${imageView.measuredHeight}")
         Log.d(TAG, "CropImageView width: $measuredWidth height: $measuredHeight")
+
+        onImageReady?.invoke(imageView.drawable.toBitmap())
     }
 
     private fun initScaleImage(radius: Int) {
         while (drawableWidth * deltaScale < radius * 2 || drawableHeight * deltaScale < radius * 2) {
             deltaScale += 0.2f
         }
+        // 圖片置中
         val imageOriginLeft = (measuredWidth / 2) - (imageView.drawable.intrinsicWidth * deltaScale / 2)
         val imageOriginTop = (measuredHeight / 2) - (imageView.drawable.intrinsicHeight * deltaScale / 2)
         currentImageMatrix.setTranslate(imageOriginLeft.toFloat(), imageOriginTop.toFloat())
+        // 圖片放大到至少比裁切一樣大
         currentImageMatrix.preScale(deltaScale, deltaScale)
         imageView.imageMatrix = currentImageMatrix
+
+        onDeltaScaleChange?.invoke(deltaScale)
+        onMatrixChange?.invoke(currentImageMatrix)
     }
 
     fun setMaxScale(max: Int) {}
@@ -117,8 +120,42 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
         return matrixValue[valueIndex]
     }
 
+    private var previousX = 0f
+    private var previousY = 0f
+
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        return scaleGestureDetector.onTouchEvent(event)
+        Log.d(TAG, "onTouchEvent event action ${event!!.action}")
+        // if (scaleGestureDetector.onTouchEvent(event)) return true
+
+        // when (event.actionMasked) {
+        //     MotionEvent.ACTION_DOWN -> {
+        //         Log.d(TAG, "onTouchEvent: ACTION_DOWN")
+        //         previousX = event.x
+        //         previousY = event.y
+        //     }
+        //     MotionEvent.ACTION_MOVE -> {
+        //         val deltaX = event.x - previousX
+        //         val deltaY = event.y - previousY
+        //         Log.d(TAG, "onTouchEvent: ACTION_MOVE deltaX $deltaX deltaY $deltaY")
+        //         currentImageMatrix.postTranslate(deltaX, deltaY)
+        //         imageView.imageMatrix = currentImageMatrix
+        //
+        //         previousX = event.x
+        //         previousY = event.y
+        //     }
+        //     MotionEvent.ACTION_UP -> {
+        //         Log.d(TAG, "onTouchEvent: ACTION_UP")
+        //     }
+        // }
+        scaleGestureDetector.onTouchEvent(event)
+
+        gestureDetector.onTouchEvent(event)
+
+        return true
+    }
+
+    fun snapshot() {
+
     }
 
     private inner class ScaleListener(
@@ -146,8 +183,23 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
         }
     }
 
+    private inner class GestureListener(
+        private val currentImageMatrix: Matrix,
+        private val imageView: ImageView
+    ) : GestureDetector.SimpleOnGestureListener() {
+        override fun onScroll(
+            e1: MotionEvent?,
+            e2: MotionEvent?,
+            distanceX: Float,
+            distanceY: Float
+        ): Boolean {
+            currentImageMatrix.postTranslate(-distanceX, -distanceY)
+            imageView.imageMatrix = currentImageMatrix
+            return true
+        }
+    }
+
     companion object {
-        private const val MAX_SCALE_MULTIPLIER = 10
         private const val MATRIX_VALUES_COUNT = 9L
         private const val TAG = "CropImageView"
     }

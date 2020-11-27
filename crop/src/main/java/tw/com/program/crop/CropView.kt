@@ -1,9 +1,10 @@
 package tw.com.program.crop
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.util.AttributeSet
 import android.view.LayoutInflater
-import android.view.ViewGroup
 import android.widget.FrameLayout
 
 /**
@@ -19,14 +20,21 @@ class CropView(context: Context, attrs: AttributeSet?) : FrameLayout(context, at
             this,
             true
         )
-    private val cropImageView: CropImageView
-    private val maskView: MaskView
+    private val cropImageView: CropImageView by lazy { container.findViewById<CropImageView>(R.id.image) }
+    private val maskView: MaskView by lazy { container.findViewById<MaskView>(R.id.mask) }
 
     init {
-        cropImageView = container.findViewById(R.id.crop)
-        maskView = container.findViewById(R.id.mask)
         maskView.onRadiusReady = {
             setRadius(it)
+        }
+        cropImageView.onImageReady = {
+            setBitmap(it)
+        }
+        cropImageView.onDeltaScaleChange = {
+            setDeltaScale(it)
+        }
+        cropImageView.onMatrixChange = {
+            setMatrix(it)
         }
     }
 
@@ -34,8 +42,16 @@ class CropView(context: Context, attrs: AttributeSet?) : FrameLayout(context, at
         cropImageView.radius = radius.toInt()
     }
 
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        super.onLayout(changed, left, top, right, bottom)
+    private fun setBitmap(bitmap: Bitmap) {
+        maskView.cropBitmap = bitmap
+    }
+
+    private fun setDeltaScale(deltaScale: Float) {
+        maskView.deltaScale = deltaScale
+    }
+
+    private fun setMatrix(matrix: Matrix) {
+        maskView.bitmapMatrix = matrix
     }
 
     // TODO: 2020/11/25 實作外部設置遮罩顏色
@@ -43,4 +59,8 @@ class CropView(context: Context, attrs: AttributeSet?) : FrameLayout(context, at
 
     // TODO: 2020/11/25 實作外部設置裁切框形狀
     fun setCropShape(@CropShape shape: Int) {}
+
+    fun snapshot(): Bitmap {
+        return maskView.snapshot()!!
+    }
 }
