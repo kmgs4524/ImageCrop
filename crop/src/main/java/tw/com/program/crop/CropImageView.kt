@@ -91,6 +91,15 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
         onMatrixChange?.invoke(currentImageMatrix)
     }
 
+    fun rotateImage(degree: Int) {
+        currentImageMatrix.postRotate(
+            degree.toFloat(),
+            imageView.measuredWidth / 2f,
+            imageView.measuredHeight / 2f
+        )
+        imageView.imageMatrix = currentImageMatrix
+    }
+
     fun setMaxScale(max: Int) {}
 
     fun setMinScale(min: Int) {}
@@ -127,35 +136,11 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
         Log.d(TAG, "onTouchEvent event action ${event!!.action}")
         // if (scaleGestureDetector.onTouchEvent(event)) return true
 
-        // when (event.actionMasked) {
-        //     MotionEvent.ACTION_DOWN -> {
-        //         Log.d(TAG, "onTouchEvent: ACTION_DOWN")
-        //         previousX = event.x
-        //         previousY = event.y
-        //     }
-        //     MotionEvent.ACTION_MOVE -> {
-        //         val deltaX = event.x - previousX
-        //         val deltaY = event.y - previousY
-        //         Log.d(TAG, "onTouchEvent: ACTION_MOVE deltaX $deltaX deltaY $deltaY")
-        //         currentImageMatrix.postTranslate(deltaX, deltaY)
-        //         imageView.imageMatrix = currentImageMatrix
-        //
-        //         previousX = event.x
-        //         previousY = event.y
-        //     }
-        //     MotionEvent.ACTION_UP -> {
-        //         Log.d(TAG, "onTouchEvent: ACTION_UP")
-        //     }
-        // }
         scaleGestureDetector.onTouchEvent(event)
 
         gestureDetector.onTouchEvent(event)
 
         return true
-    }
-
-    fun snapshot() {
-
     }
 
     private inner class ScaleListener(
@@ -167,11 +152,9 @@ class CropImageView(context: Context?, attrs: AttributeSet?) : ViewGroup(context
 
             val factor = detector.scaleFactor
             if (factor > 1 && getCurrentScale() * factor <= maxScale) {
-                // postScale(getCurrentScale() * factor, detector.focusX, detector.focusY)
                 postScale(factor, detector.focusX, detector.focusY)
             } else if (factor < 1.0 && getCurrentScale() * factor >= minScale) {
                 Log.d(TAG, "focusX, ${detector.focusX} focusY: ${detector.focusY}")
-                // postScale(getCurrentScale() * factor, detector.focusX, detector.focusY)
                 postScale(factor, detector.focusX, detector.focusY)
             }
             return true

@@ -6,6 +6,8 @@ import android.graphics.Matrix
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.widget.FrameLayout
+import android.widget.ImageView
+import androidx.appcompat.widget.AppCompatImageView
 
 /**
  * 裁切照片元件
@@ -22,6 +24,7 @@ class CropView(context: Context, attrs: AttributeSet?) : FrameLayout(context, at
         )
     private val cropImageView: CropImageView by lazy { container.findViewById<CropImageView>(R.id.image) }
     private val maskView: MaskView by lazy { container.findViewById<MaskView>(R.id.mask) }
+    private val rotate: ImageView by lazy { container.findViewById<AppCompatImageView>(R.id.rotate) }
 
     init {
         maskView.onRadiusReady = {
@@ -35,6 +38,9 @@ class CropView(context: Context, attrs: AttributeSet?) : FrameLayout(context, at
         }
         cropImageView.onMatrixChange = {
             setMatrix(it)
+        }
+        rotate.setOnClickListener {
+            cropImageView.rotateImage(90)
         }
     }
 
