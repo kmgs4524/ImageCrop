@@ -1,3 +1,5 @@
+include ':base'
+include ':selector'
 include ':crop'
 include ':app'
 rootProject.name = "ImageCrop"

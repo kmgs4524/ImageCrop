@@ -3,11 +3,17 @@ package tw.com.program.crop
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.net.Uri
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Message
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
+import androidx.core.net.toUri
+import java.io.File
 
 /**
  * 裁切照片元件
@@ -36,12 +42,19 @@ class CropView(context: Context, attrs: AttributeSet?) : FrameLayout(context, at
         cropImageView.onDeltaScaleChange = {
             setDeltaScale(it)
         }
+        cropImageView.onRotateDegreeChange = {
+            setRotateDegree(it)
+        }
         cropImageView.onMatrixChange = {
             setMatrix(it)
         }
         rotate.setOnClickListener {
             cropImageView.rotateImage(90)
         }
+    }
+
+    private fun setRotateDegree(degree: Int) {
+        maskView.rotateDegree = degree
     }
 
     private fun setRadius(radius: Float) {
@@ -60,13 +73,30 @@ class CropView(context: Context, attrs: AttributeSet?) : FrameLayout(context, at
         maskView.bitmapMatrix = matrix
     }
 
-    // TODO: 2020/11/25 實作外部設置遮罩顏色
-    fun setMaskColor(color: Int) {}
+    fun setImage(imageUri: Uri) {
+        cropImageView.imageUri = imageUri
+    }
 
-    // TODO: 2020/11/25 實作外部設置裁切框形狀
-    fun setCropShape(@CropShape shape: Int) {}
+    fun cropAndSaveFile(callback: BitmapCropCallback) {
+        val handlerThread = HandlerThread(CROP_BITMAP).apply { start() }
+        val cropHandler by lazy { Handler(handlerThread.looper) }
+        cropHandler.post {
+            val croppedBitmap = maskView.snapshot()
+            val file = File(context.cacheDir, BITMAP_FILE_NAME)
+            val compressSuccessful = croppedBitmap?.compress(Bitmap.CompressFormat.JPEG, 80, file.outputStream()) ?: false
+            if (compressSuccessful) {
+                handler.sendMessage(Message().apply {
+                    handler.post {
+                        callback.onBitmapCropped(file.toUri())
+                    }
+                })
+            }
+        }
+    }
 
-    fun snapshot(): Bitmap {
-        return maskView.snapshot()!!
+    companion object {
+        private const val TAG = "CropView"
+        private const val CROP_BITMAP = "CROP_BITMAP"
+        private const val BITMAP_FILE_NAME = "cropped_bitmap"
     }
 }
