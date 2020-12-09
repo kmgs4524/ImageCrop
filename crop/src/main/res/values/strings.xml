@@ -1,0 +1,4 @@
+<resources>
+    <string name="crop_menu_save">Save</string>
+    <string name="crop_bar_title">ImageCrop</string>
+</resources>
