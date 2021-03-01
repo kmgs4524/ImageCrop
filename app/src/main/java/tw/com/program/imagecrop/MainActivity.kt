@@ -5,24 +5,27 @@ import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
-import androidx.core.net.toUri
+import android.widget.Toast
+import androidx.databinding.DataBindingUtil
 import kotlinx.android.synthetic.main.activity_main.*
 import tw.com.program.crop.ImageCrop
 import tw.com.program.imagecrop.base.BarStyleParameters
+import tw.com.program.imagecrop.databinding.ActivityMainBinding
 import tw.com.program.imagecrop.selector.ImageSelector
-import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var resultUri: Uri
+    private var resultUri: Uri? = null
+
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        button.setOnClickListener {
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+
+        crop.setOnClickListener {
             crop()
         }
         select.setOnClickListener {
@@ -41,8 +44,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun crop() {
-        val fileUri = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "cat.jpeg")
-            .toUri()
+        if (resultUri == null) {
+            Toast.makeText(
+                applicationContext,
+                "請先按 SELECT 載入一張圖片",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
         ImageCrop.create()
             // .setBarStyle(BarStyleParameters(
             //     R.color.teal_200,
@@ -51,7 +61,7 @@ class MainActivity : AppCompatActivity() {
             //     R.color.white,
             //     R.color.white
             // ))
-            .load(resultUri)
+            .load(resultUri!!)
             .crop(this)
     }
 
@@ -61,12 +71,12 @@ class MainActivity : AppCompatActivity() {
         when {
             requestCode == ImageCrop.REQUEST_CROP && resultCode == Activity.RESULT_OK -> {
                 resultUri = ImageCrop.getResult(data!!)
-                result.setImageURI(resultUri)
+                result_image.setImageURI(resultUri)
                 Log.d(TAG, "onActivityResult: REQUEST_CROP resultUri: $resultUri")
             }
             requestCode == ImageSelector.REQUEST_SELECT_IMAGE && resultCode == Activity.RESULT_OK -> {
                 resultUri = ImageSelector.getResult(data!!)
-                result.setImageURI(resultUri)
+                result_image.setImageURI(resultUri)
                 Log.d(TAG, "onActivityResult: REQUEST_SELECT_IMAGE resultUri: $resultUri")
             }
         }

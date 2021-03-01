@@ -18,7 +18,7 @@ class ResultActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_result)
 
         val imageUri = intent.getParcelableExtra<Uri>(IMAGE_URI)
-        binding.result.setImageURI(imageUri)
+        binding.resultImage.setImageURI(imageUri)
     }
 
     companion object {
